@@ -4,7 +4,7 @@ import requests
 import os
 import json
 
-# TODO: Add API Urls
+# TODO: Add API Url
 os.environ['API_URL'] = ""
 
 
@@ -128,7 +128,4 @@ class MLOpsAPI:
         json_response = response.json()
         # Print the json response
         print(json.dumps(json_response, indent=4))
-    
-    
-        
     
