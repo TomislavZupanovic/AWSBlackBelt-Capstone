@@ -7,3 +7,4 @@ requests
 JSON-log-formatter
 mlflow==1.22.0
 lakefs-client
+awswrangler
