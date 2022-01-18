@@ -91,7 +91,7 @@ class MLHandler:
         
     
     def define_ml_dataset(self, train_data: pd.DataFrame, test_data: pd.DataFrame, 
-                          features: list) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray]:
+                          features: list, run: mlflow.entities.run) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray]:
         """ Creates the training and test datasets to train the models 
             :argument: train_data - Pandas DataFrame as training dataset, should contain target RUL
             :argument: test_data - Pandas DataFrame as test dataset, should contain target RUL
@@ -107,9 +107,24 @@ class MLHandler:
         x_test = test_grouped[features]
         y_test = test_grouped['rul']
         self.logger.info("Defined the ML dataset!")
+        # Save the features list used for training in MLflow
+        features_used = {'Features': features}
+        self.mf_client.log_dict(run.info.run_id, features_used, 'Features/features.json')
+        # Create folder to save data used
+        os.makedirs("dataset", exist_ok=True)
+        train_filename = "train_data.csv"
+        test_filename = "test_data.csv"
+        # Save data locally
+        train_data.to_csv("dataset" + train_filename, index=False)
+        test_data.to_csv("dataset" + test_filename, index=False)
+        # Log dataset used to Mlflow
+        mlflow.log_artifacts("dataset", "dataset")
+        # Remove locally saved data
+        for filename in [train_filename, test_filename]:
+            os.remove("dataset/" + filename)
         return x_train, y_train, x_test, y_test
     
-    def evaluate_model(self, model, x_train, y_train, x_test, y_test) -> Tuple[dict, dict, plt.figure]:
+    def evaluate_model(self, model, x_train, y_train, x_test, y_test, run: mlflow.entities.run) -> Tuple[dict, dict, plt.figure]:
         """ Evaluates model on both trainig and testing data """
         self.logger.info("Evaluating the model...")
         # Predict for both datasets
@@ -126,7 +141,15 @@ class MLHandler:
         figure = self.plot_residuals(test_predict, y_test)
         self.logger.info("Train metrics", extra=train_metrics)
         self.logger.info("Test metrics", extra=test_metrics)
-        return train_metrics, test_metrics, figure
+        # Save metrics to the MLflow
+        for metric_name, value in test_metrics.items():
+            if metric_name == "data":
+                continue
+            else:
+                mlflow.log_metric(metric_name, value)
+        # Save the residuals plot in MLflow Artifacts\
+        self.mf_client.log_figure(run.info.run_id, figure, "Plots/residual_plot.png")
+        return train_metrics, test_metrics
     
     def train_xgboost(self, x_train: pd.DataFrame, y_train: pd.Series, parameters: dict) -> Tuple[XGBRegressor, pd.DataFrame]:
         """ Trains the XGBoost Regression model on given training dataset and performs GridSearchCV on given parameters dict
@@ -149,6 +172,11 @@ class MLHandler:
         grid_results = pd.DataFrame(grid_search.cv_results_)
         # Get best model from GridSearch
         best_model = grid_search.best_estimator_
+        # Log best model in MLflow
+        mlflow.sklearn.log_model(best_model, "XGBRegressor")
+        # Log the best parameters
+        for param, value in grid_search.best_params_:
+            mlflow.log_param(param, value)
         # Print best score and best params
         best_score = abs(grid_search.best_score_)
         self.logger.info(f'Best model scores', extra={"MSE": best_score.round(2), "RMSE": np.sqrt(best_score).round(2)})

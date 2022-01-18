@@ -31,16 +31,16 @@ class MLOpsAPI:
             payload[name] = value
         return payload
 
-    def start_training(self, training_data: str, image_tag: str = None, **parameters) -> None:
+    def start_training(self, training_data_path: str, image_tag: str = None, **parameters) -> None:
         """ Starts the trainig with the specified image tag, if not specified, latest image will be used, 
             accepts arbitrary number of parameters
-            :argument: training_data - Name of the dataset file stored in LakeFS to train model on
+            :argument: training_data - Path to the dataset file stored in S3 to train model on
             :argument: image_tag - String specifying the Docker Image tag
             :argument: **parameters - Arbitrary named parameters with values to pass to the API
             :return: None
         """
         # Define the payload dictionary
-        payload = {'TrainingDataFileName': training_data}
+        payload = {'TrainDataPath': training_data_path, 'TestDataPath': training_data_path.replace('train', 'test')}
         if image_tag:
             payload['ImageTag'] = image_tag
         # Check if parameters are specified

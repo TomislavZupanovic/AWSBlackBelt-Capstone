@@ -5,6 +5,5 @@ scikit-learn
 xgboost
 requests
 JSON-log-formatter
-mlflow==1.22.0
-lakefs-client
+mlflow==1.23.0
 awswrangler

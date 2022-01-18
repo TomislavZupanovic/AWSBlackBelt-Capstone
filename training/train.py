@@ -14,7 +14,8 @@ from datetime import datetime
 if __name__ == '__main__':
     # Instantiate DataHandler and MLHandler
     data_handler = DataHandler(s3_bucket="mlops-storage-bucket")
-    ml_handler = MLHandler(experiment_name="Experimentation-Phase")
+    ml_handler = MLHandler(experiment_name="Predictive-Maintenance")
+    # =======================================================LOADING DATA=================================================
     # Get training and testing data S3 paths
     train_path = os.environ.get('TrainDataPath', None)
     test_path = os.environ.get('TestDataPath', None)
@@ -36,10 +37,23 @@ if __name__ == '__main__':
     # Smooth the data
     smoothed_train_data = data_handler.smooth_data(standardized_train_data, window=10)
     smoothed_test_data = data_handler.smooth_data(standardized_test_data, window=10)
-    # Get train, test and target split
-    selected_features = ['unit', 'altitude', 'mach', 'tra', 'sensor_2', 'sensor_3', 'sensor_4', 'sensor_6', 'sensor_7',
-                    'sensor_8', 'sensor_9', 'sensor_10', 'sensor_11', 'sensor_12', 'sensor_13', 'sensor_14', 'sensor_15',
-                    'sensor_17', 'sensor_20', 'sensor_21']
-    x_train, y_train, x_test, y_test = ml_handler.define_ml_dataset(smoothed_train_data, smoothed_test_data,
-                                                                    selected_features)
-    # TODO: add Mlflow tracking
+    # Get the features from ENV variable
+    selected_features = os.environ['features'].split(',')
+    # ==========================================================TRAINING====================================================
+    # Start the MLflow run
+    with mlflow.start_run(tags={'ModelClass': "XGBRegressor"}) as run:
+        # Split the data on training and test sets
+        x_train, y_train, x_test, y_test = ml_handler.define_ml_dataset(smoothed_train_data, smoothed_test_data,
+                                                                    selected_features, run)
+        # Get parameters values from ENV variables
+        n_estimators = [int(e) for e in os.environ['n_estimators'].split(',')]
+        max_depth = [int(e) for e in os.environ['max_depth'].split(',')]
+        min_child_weight = [int(e) for e in os.environ['min_child_weight'].split(',')]
+        reg_lambda = [int(e) for e in os.environ['reg_lambda'].split(',')]
+        
+        parameters = {'n_estimators': n_estimators, 'max_depth': max_depth,
+                      'min_child_weight': min_child_weight, 'reg_lambda': reg_lambda}
+        # Train the model
+        best_model, grid_results = ml_handler.train_xgboost(x_train, y_train, parameters)
+        # Evaluate the model
+        train_metrics, test_metrics = ml_handler.evaluate_model(best_model, x_train, y_train, x_test, y_test, run)
