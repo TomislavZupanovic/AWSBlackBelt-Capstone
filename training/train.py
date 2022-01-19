@@ -13,9 +13,10 @@ from datetime import datetime
 
 if __name__ == '__main__':
     # Instantiate DataHandler and MLHandler
-    data_handler = DataHandler(s3_bucket="mlops-storage-bucket")
+    bucket_name = "mlops-storage-bucket"
+    data_handler = DataHandler(s3_bucket=bucket_name)
     ml_handler = MLHandler(experiment_name="Predictive-Maintenance")
-    # =======================================================LOADING DATA=================================================
+    # =======================================================LOADING DATA==================================================
     # Get training and testing data S3 paths
     train_path = os.environ.get('TrainDataPath', None)
     test_path = os.environ.get('TestDataPath', None)
@@ -28,6 +29,7 @@ if __name__ == '__main__':
     # Load both train and test data
     train_data = data_handler.load_data(train_path)
     test_data = data_handler.load_data(test_path)
+    # =====================================================FEATURE ENGINEERING=============================================
     # Perform condition defining
     train_data = data_handler.define_conditions(train_data)
     test_data = data_handler.define_conditions(test_data)
@@ -41,10 +43,14 @@ if __name__ == '__main__':
     selected_features = os.environ['features'].split(',')
     # ==========================================================TRAINING====================================================
     # Start the MLflow run
-    with mlflow.start_run(tags={'ModelClass': "XGBRegressor"}) as run:
+    with mlflow.start_run(tags={'ImageTag': os.environ['ImageTag']}) as run:
         # Split the data on training and test sets
         x_train, y_train, x_test, y_test = ml_handler.define_ml_dataset(smoothed_train_data, smoothed_test_data,
                                                                     selected_features, run)
+        # Log the dataset path in MLflow
+        dataset_reference = {'TrainData': bucket_name + '/' + train_path,
+                             'TestData': bucket_name + '/' + test_path}
+        ml_handler.mf_client.log_dict(run.info.run_id, dataset_reference, "Dataset/data_reference.json")
         # Get parameters values from ENV variables
         n_estimators = [int(e) for e in os.environ['n_estimators'].split(',')]
         max_depth = [int(e) for e in os.environ['max_depth'].split(',')]

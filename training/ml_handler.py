@@ -19,7 +19,7 @@ from xgboost import XGBRegressor
 class MLHandler:
     def __init__(self, experiment_name: str) -> None:
         self.experiment_name = experiment_name
-        mlflow.set_tracking_uri("http://mlflow.aast-innovation.iolap.com")
+        mlflow.set_tracking_uri("http://mlops-mlflow-load-balancer-1002257987.us-east-1.elb.amazonaws.com")
         mlflow.set_experiment(self.experiment_name)
         self.mf_client = mlflow.tracking.MlflowClient()
         self.logger = self._define_logger(logger_name="MLLogger")
@@ -110,18 +110,6 @@ class MLHandler:
         # Save the features list used for training in MLflow
         features_used = {'Features': features}
         self.mf_client.log_dict(run.info.run_id, features_used, 'Features/features.json')
-        # Create folder to save data used
-        os.makedirs("dataset", exist_ok=True)
-        train_filename = "train_data.csv"
-        test_filename = "test_data.csv"
-        # Save data locally
-        train_data.to_csv("dataset" + train_filename, index=False)
-        test_data.to_csv("dataset" + test_filename, index=False)
-        # Log dataset used to Mlflow
-        mlflow.log_artifacts("dataset", "dataset")
-        # Remove locally saved data
-        for filename in [train_filename, test_filename]:
-            os.remove("dataset/" + filename)
         return x_train, y_train, x_test, y_test
     
     def evaluate_model(self, model, x_train, y_train, x_test, y_test, run: mlflow.entities.run) -> Tuple[dict, dict, plt.figure]:
@@ -181,5 +169,5 @@ class MLHandler:
         best_score = abs(grid_search.best_score_)
         self.logger.info(f'Best model scores', extra={"MSE": best_score.round(2), "RMSE": np.sqrt(best_score).round(2)})
         self.logger.info(f"Best model parameters", extra=grid_search.best_params_)
-        self.logger.info("XGBRegressor model finished training!")
+        self.logger.info("GridSearchCV for XGBRegressor finished!")
         return best_model, grid_results

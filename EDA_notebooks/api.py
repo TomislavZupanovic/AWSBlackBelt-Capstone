@@ -4,9 +4,8 @@ import requests
 import os
 import json
 
-# TODO: Add API Url
-os.environ['API_URL'] = ""
-
+#os.environ['API_URL'] = "https://as60shylek-vpce-09ddda804f71b9649.execute-api.us-east-1.amazonaws.com/v1"
+os.environ['API_URL'] = "https://as60shylek.execute-api.us-east-1.amazonaws.com/v1"
 
 class MLOpsAPI:
     def __init__(self) -> None:

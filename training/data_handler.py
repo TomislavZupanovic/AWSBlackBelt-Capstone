@@ -28,8 +28,8 @@ class DataHandler:
         return logger
     
     def load_data(self, file_path: str) -> pd.DataFrame:
-        """ Loads the dataset from the LakeFS based on the file_name
-            :argument: file_path - Path to the file stored in LakeFS
+        """ Loads the dataset from the S3 bucket based on the file_name
+            :argument: file_path - Path to the file stored in S3 bucket
         """
         self.logger.info("Loading the data from S3...")
         # Get the parquet data
@@ -37,9 +37,10 @@ class DataHandler:
         self.logger.info("Data loaded!")
         return data
     
-    def define_conditions(self, data: pd.DataFrame) -> pd.DataFrame:
+    def define_conditions(self, input_data: pd.DataFrame) -> pd.DataFrame:
         """ Rounds the values of condition columns (altitude, mach, tra) """
         self.logger.info("Defining the conditions in data...")
+        data = input_data.copy()
         data['altitude'] = data['altitude'].round()
         data['mach'] = data['mach'].round(2)
         data['tra'] = data['tra'].round()
