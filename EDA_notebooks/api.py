@@ -1,4 +1,3 @@
-from email.mime import image
 import re
 import requests
 import os
