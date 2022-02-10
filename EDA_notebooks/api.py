@@ -3,7 +3,6 @@ import requests
 import os
 import json
 
-#os.environ['API_URL'] = "https://as60shylek-vpce-09ddda804f71b9649.execute-api.us-east-1.amazonaws.com/v1"
 os.environ['API_URL'] = "https://as60shylek.execute-api.us-east-1.amazonaws.com/v1"
 
 class MLOpsAPI:
@@ -43,7 +42,7 @@ class MLOpsAPI:
             payload['ImageTag'] = image_tag
         # Check if parameters are specified
         if parameters:
-           payload = self._format_parameters(payload, parameters)
+            payload = self._format_parameters(payload, parameters)
         # Send POST request to the API endpoint
         response = requests.post(url=os.environ['API_URL'] + '/start_training', data=json.dumps(payload))
         # Convert response to the JSON/Dictionary
@@ -79,16 +78,17 @@ class MLOpsAPI:
         # Print the json response
         print(json.dumps(json_response, indent=4)) 
 
-    def start_batch_inference(self, model_name: str, inference_data: str, image_tag: str = None, **parameters) -> None:
+    def start_batch_inference(self, model_name: str, inference_data: str, stage: str, image_tag: str = None, **parameters) -> None:
         """ Start the Batch Inference for the specified model name and data file name from LakeFS 
             :argument: model_name - Name of the MLflow model to use as predictor
-            :argument: inference_data - Name of the dataset file stored in LakeFS to get predictions from
+            :argument: inference_data - Path of the dataset file stored in S3 to get predictions from
+            :argument: stage - Name of the MLflow model stage
             :argument: image_tag - String specifying the Docker Image tag
             :argument: **parameters - Arbitrary named parameters with values to pass to the API
             :return: None
         """
          # Define the payload dictionary
-        payload = {'ModelName': model_name, 'InferenceDataFileName': inference_data}
+        payload = {'ModelName': model_name, 'InferenceDataPath': inference_data, 'Stage': stage}
         if image_tag:
             payload['ImageTag'] = image_tag
         # Check if parameters are specified
@@ -101,18 +101,19 @@ class MLOpsAPI:
         # Print the json response
         print(json.dumps(json_response, indent=4))
         
-    def define_inference_schedule(self, cron_expression: str, model_name: str, action: str = 'create',
+    def define_inference_schedule(self, cron_expression: str, model_name: str, stage: str, action: str = 'create',
                                   image_tag: str = None, **parameters) -> None:
         """ Creates/updates or deletes the Cron schedule for inference depending on the action specified 
             :argument: cron_expression - Crons expression for defining timely schedule
             :argument: model_name - Name of the MLflow model to use as predictor
+            :argument: stage - Name of the MLflow model stage
             :argument: action - 'create' or 'delete' the schedule Rule
             :argument: image_tag - String specifying the Docker Image tag
             :argument: **parameters - Arbitrary named parameters with values to pass to the API
             :return: None
         """
          # Define the payload dictionary
-        payload = {'ModelName': model_name, 'Cron': cron_expression, 'Action': action}
+        payload = {'ModelName': model_name, 'Cron': cron_expression, 'Action': action, 'Stage': stage}
         if image_tag:
             payload['ImageTag'] = image_tag
         # Check if parameters are specified

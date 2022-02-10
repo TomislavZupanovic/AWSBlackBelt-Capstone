@@ -1,9 +1,11 @@
-pandas
-numpy
+awswrangler==2.13.0
+pandas==1.3.4
+numpy==1.21.4
 matplotlib
-scikit-learn
-xgboost
+scikit-learn==1.0.2
+xgboost==1.5.1
 requests
-JSON-log-formatter
 mlflow==1.23.0
-awswrangler
+JSON-log-formatter==0.5.0
+boto3
+pickle5

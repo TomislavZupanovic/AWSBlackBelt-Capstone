@@ -1,8 +1,7 @@
 FROM public.ecr.aws/bitnami/python:3.8-debian-10
 
 # Copy the code
-COPY /inference /inference
-COPY /training /training
+COPY . .
 
 # Install dependencies using requirements.txt file
 COPY requirements.txt .

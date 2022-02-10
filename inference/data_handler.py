@@ -23,13 +23,15 @@ class DataHandler:
         json_handler.setFormatter(formatter)
         # Define the Logger
         logger = logging.getLogger(logger_name)
+        if logger.hasHandlers():
+            logger.handlers.clear()
         logger.addHandler(json_handler)
         logger.setLevel(logging.INFO)
         return logger
     
     def load_data(self, file_path: str) -> pd.DataFrame:
-        """ Loads the dataset from the LakeFS based on the file_name
-            :argument: file_path - Path to the file stored in LakeFS
+        """ Loads the dataset from the S3 bucket based on the file_name
+            :argument: file_path - Path to the file stored in S3 bucket
         """
         self.logger.info("Loading the data from S3...")
         # Get the parquet data
@@ -37,21 +39,23 @@ class DataHandler:
         self.logger.info("Data loaded!")
         return data
     
-    def define_conditions(self, data: pd.DataFrame) -> pd.DataFrame:
+    def define_conditions(self, input_data: pd.DataFrame) -> pd.DataFrame:
         """ Rounds the values of condition columns (altitude, mach, tra) """
         self.logger.info("Defining the conditions in data...")
+        data = input_data.copy()
         data['altitude'] = data['altitude'].round()
         data['mach'] = data['mach'].round(2)
         data['tra'] = data['tra'].round()
         # Concatenate all 3 conditions into 1
         data['condition'] = data['altitude'] + data['mach'] + data['tra']
         keys = data['condition'].unique()
-        mapping = {k: v for k, v in zip(keys, range(1, len(keys) + 1))}
+        sorted_keys = np.sort(keys)
+        mapping = {k: v for k, v in zip(sorted_keys, range(1, len(sorted_keys) + 1))}
         data['condition'] = data['condition'].map(mapping)
         self.logger.info("Conditions successfully defined!")
         return data
 
-    def standardize(self, input_data: pd.DataFrame) -> pd.DataFrame:
+    def standardize_manual(self, input_data: pd.DataFrame) -> pd.DataFrame:
         """ Standardizes the sensor values based on condition to have same mean to be comparable """
         self.logger.info("Standardizing data...")
         data = input_data.copy()
@@ -63,8 +67,8 @@ class DataHandler:
                 data.loc[data['condition'] == condition,column] = data.loc[data['condition'] == condition, column].map(lambda x: (x - mean) / (std + 0.0000001))
         self.logger.info("Data successfully standardized!")
         return data
-    
-    def smooth_data(self, input_data: pd.DataFrame, window: int) -> pd.DataFrame:
+            
+    def smooth_data(self, input_data: pd.DataFrame, window: int, target_clip: int = None) -> pd.DataFrame:
         """ Smooths the sensor measurements with Moving Average and specified window 
             :argument: input_data - Pandas Dataframe containing data
             :argument: window - Integer representing the moving average window size
@@ -72,6 +76,11 @@ class DataHandler:
         """
         self.logger.info("Smoothing the data...")
         smoothed_data = input_data.copy()
+        if target_clip:
+            try:
+                smoothed_data['rul'] = smoothed_data['rul'].clip(upper=target_clip)
+            except:
+                self.logger.info("There is no target column to clip!")
         sensors = [e for e in list(smoothed_data.columns) if 'sensor_' in e]
         smoothed_data[sensors] = smoothed_data.groupby('unit')[sensors].apply(lambda column: column.rolling(window=window, min_periods=1).mean())
         self.logger.info("Data successfully smoothed!")
